@@ -1,3 +1,9 @@
+"""
+Fire Spread Models. 
+Unless otherwise indicated all equations numbers refer to:
+Cruz et al. 2015.
+"""
+
 import pandas as pd
 import csv
 import datetime as dt
@@ -7,7 +13,7 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
-from typing import List
+from typing import Dict, KeysView, List
 
 DATE = 'Local Date'
 TIME = 'Local Time'
@@ -21,6 +27,7 @@ GFDI = 'GFDI'
 DATETIME = 'DateTime'
 FROS = 'FROS km/h' # forward ROS
 ROS = 'flank ROS km/h'
+
 
 def get_weather(fn):
     '''reads BOM point weather data into a panda df.
@@ -61,6 +68,7 @@ def trim_weather(weather_df, start_date, start_time, duration):
     return weather_df[(weather_df[DATETIME] >= start_datetime) & (weather_df[DATETIME] <= finish_datetime)]
 
 def spread_direction(weather_df: DataFrame) -> DataFrame:
+    """ Converts wind direction to spread direction"""
     return np.where(
         weather_df[WIND_DIR] < 180,
         weather_df[WIND_DIR] + 180,
@@ -93,13 +101,8 @@ def get_FFDI(weather_df: DataFrame, wind_red: int = 3, flank=False) -> Series:
     # return np.round(ffdi, 1) 
     return ffdi   
 
-"""
-Fire Soread Models: 
-Unless otherwiseindicated allequations refer to:
-Cruz, Miguel, James Gould, Martin Alexander, Lachie Mccaw, and Stuart Matthews. 
-A Guide to Rate of Fire Spread Models for Australian Vegetation, 2015.
-"""
-def ros_grass(weather_df: DataFrame, grass_state: str, grass_curing):
+#### FIRE SPREAD MODELS #####
+def ros_grass_cheney(weather_df: DataFrame, grass_state: str, grass_curing):
     """Cheney et al. 1998
     inputs: 
         Wind speed 10m (km/h)
@@ -181,7 +184,8 @@ def ros_grass(weather_df: DataFrame, grass_state: str, grass_curing):
     return ros_df
 
 def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int) -> DataFrame:
-    
+    """McArthur 1973a Mk5 Forest Fire Danger Meter
+    """
     ros_df = weather_df[DATETIME].to_frame(name='DateTime')
     ros_df['Direction'] = spread_direction(weather_df)
     ros_df[FFDI] = get_FFDI(weather_df, wind_red)
@@ -191,14 +195,14 @@ def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int) -> Data
 
     return ros_df
 
-def plot_paths(ros_dfs: List):
+def plot_paths(ros_dfs: Dict):
     """Prduces a vector plot of the path of the fire from FROS model.
     """
     axes = plt.axes()
     colors = ['blue', 'red']
     color_id = 1
 
-    for ros_df in ros_dfs:
+    for model,ros_df in ros_dfs.items():
         times = list(ros_df[DATETIME])
         direction = list(ros_df['Direction'])
         fros = list(ros_df[FROS])
@@ -227,12 +231,18 @@ def plot_paths(ros_dfs: List):
     plt.show()
 
 if __name__ == "__main__":
+    # general model settings
     weather_fn = 'data\TestPointForecast.csv'
     start_date = '20210827'
     start_time = '09:00'
     duration = 24 #hours
-
     slope = 10 #but note Cruz et al. for large fires slope effect negligible
+
+    # Select the models you wan to run by assigning them 'True'
+    selected_models = {
+        'GRASS: Cheney et al. 1998': True,
+        'FOREST: McArthur Mk5': True
+    }
 
     # model specific data
     # grass state # N - natural, G - grazed, E - eaten out
@@ -245,18 +255,39 @@ if __name__ == "__main__":
     fuel_load = 20 # t/ha
     wind_reduction = 3 # Tolhurst's wind reduction factor between 1 - 6
 
+
+    ###################################
+    ###### DO NOT EDIT BELOW HERE #####
+    ###################################
     weather_df = get_weather(weather_fn)
     weather_df = trim_weather(weather_df, start_date, start_time, duration)
+
+    MODELS = {
+        'GRASS: Cheney et al. 1998': ros_grass_cheney(weather_df, grass_state, grass_curing),
+        'FOREST: McArthur Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction)
+    }
+
+    model_outputs = {} #model name as key, dataframes as val
     
     # grass
-    ros_grass = ros_grass(weather_df, grass_state, grass_curing)
+    # ros_grass = ros_grass(weather_df, grass_state, grass_curing)
     # print(ros_grass)
 
     # forest macarthur 77
-    ros_forest_mk5 = ros_forest_mk5(weather_df, fuel_load, wind_reduction)
-    ros_forest_mk5[FROS] = slope_correction(ros_forest_mk5[FROS], slope)
+    # ros_forest_mk5 = ros_forest_mk5(weather_df, fuel_load, wind_reduction)
+    # ros_forest_mk5[FROS] = slope_correction(ros_forest_mk5[FROS], slope)
     # print(ros_forest_mk5)
 
-    plot_paths([ros_grass, ros_forest_mk5])
+    for key, val in selected_models.items():
+        if val:
+            model_outputs[key] = MODELS[key]
+    
+
+    for key, val in model_outputs.items():
+        print(key)
+        print(val)
+        print('\n')
+
+    plot_paths(model_outputs)
 
     print('fire spread done')
