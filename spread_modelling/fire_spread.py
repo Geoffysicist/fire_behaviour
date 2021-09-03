@@ -201,6 +201,7 @@ def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int, slope: 
 
 # post processing and output
 def plot_paths(ros_dfs: Dict):
+    #TODO add ignition point dict - lat, lon proj time.
     """Prduces a vector plot of the path of the fire from FROS model.
     """
     axes = plt.axes()
