@@ -4,16 +4,20 @@ Unless otherwise indicated all equations numbers refer to:
 Cruz et al. 2015.
 """
 
+# from geopandas import geodataframe
 import pandas as pd
 import csv
 import datetime as dt
 import math as m
 import numpy as np
+from pandas.core.base import NoNewAttributesMixin
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 import matplotlib.pyplot as plt
-from matplotlib.path import Path
+# from matplotlib.path import Path
 from typing import Dict, KeysView, List
+from geopandas import GeoDataFrame, points_from_xy
+
 
 DATE = 'Local Date'
 TIME = 'Local Time'
@@ -27,6 +31,38 @@ GFDI = 'GFDI'
 DATETIME = 'DateTime'
 FROS = 'FROS km/h' # forward ROS
 ROS = 'flank ROS km/h'
+IG_TIME = 'Ignition time'
+IG_COORDS = 'Ignition coordinates'
+
+COORD_SYSTEMS = {
+    'GDA94_LL': 'EPSG:4283',
+    'MGA94_49': 'EPSG:28349',
+    'MGA94_50': 'EPSG:28350',
+    'MGA94_51': 'EPSG:28351',
+    'MGA94_52': 'EPSG:28352',
+    'MGA94_53': 'EPSG:28353',
+    'MGA94_54': 'EPSG:28354',
+    'MGA94_55': 'EPSG:28355',
+    'MGA94_56': 'EPSG:28356',
+}
+
+
+def reproject(gdf: GeoDataFrame, projection: str):
+    'Change gdf to new projection'
+
+    return gdf.to_crs(COORD_SYSTEMS[projection])
+
+def coords_to_gdf(coords: List, date: str, time: str) -> GeoDataFrame:
+    start_datetime = date + " " + time
+    start_datetime = dt.datetime.strptime(start_datetime,"%Y%m%d %H:%M")
+    df = DataFrame({'Ignition time': [start_datetime], 'lon':[coords[1]], 'lat':[coords[0]]})
+    gdf = GeoDataFrame(
+        df, 
+        geometry=points_from_xy(df.lon, df.lat),
+        crs=COORD_SYSTEMS[coords[2]]
+    )
+   
+    return gdf
 
 
 def get_weather(fn):
@@ -200,10 +236,19 @@ def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int, slope: 
     return post_process(ros_df, slope)
 
 # post processing and output
-def plot_paths(ros_dfs: Dict):
+
+
+def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List):
     #TODO add ignition point dict - lat, lon proj time.
     """Prduces a vector plot of the path of the fire from FROS model.
     """
+    ignition_gdf = coords_to_gdf(ignition_coords, ignition_date, ignition_time)
+
+    print(ignition_gdf)
+    ignition_gdf = reproject(ignition_gdf,'MGA94_56')
+    print(type(list(ignition_gdf['geometry'].x)[0]))
+
+
     axes = plt.axes()
     colors = ['blue', 'red']
     color_id = 1
@@ -213,7 +258,9 @@ def plot_paths(ros_dfs: Dict):
         direction = list(ros_df['Direction'])
         fros = list(ros_df[FROS])
 
-        x = y = 0
+        x = list(ignition_gdf['geometry'].x)[0]
+        y = list(ignition_gdf['geometry'].y)[0]
+        # x = y = 0
         arrows = []
 
         for i in range(len(times)-1):
@@ -276,6 +323,9 @@ if __name__ == "__main__":
     weather_fn = 'data\TestPointForecast.csv'
     start_date = '20210827'
     start_time = '09:00'
+    ignition_date = start_date
+    ignition_time = start_time
+    ignition_coords = [-30.80132, 152.97958, 'GDA94_LL'] #GDA94_LL or MGA94_Zxx where xx = zone
     duration = 24 #hours
     slope = 0 #but note Cruz et al. for large fires slope effect negligible
 
@@ -289,7 +339,7 @@ if __name__ == "__main__":
     # grass state # N - natural, G - grazed, E - eaten out
     #   W - woodland (canopy cover < 30%),
     #   F - Open forest (canopy cover 30-70%, 10-15 m tall)
-    grass_state = 'E' 
+    grass_state = 'W' 
     grass_curing = 85 # per cent should between 20 and 100
 
     #forest
@@ -312,11 +362,13 @@ if __name__ == "__main__":
         fuel_load,wind_reduction
     )
 
-    for key, val in model_outputs.items():
-        print(key)
-        print(val)
-        print('\n')
+    # print(model_outputs)
 
-    plot_paths(model_outputs)
+    # for key, val in model_outputs.items():
+    #     print(key)
+    #     print(val)
+    #     print('\n')
+
+    plot_paths(model_outputs, ignition_date, ignition_time, ignition_coords)
 
     print('fire spread done')
