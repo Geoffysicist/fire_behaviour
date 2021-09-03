@@ -235,6 +235,40 @@ def plot_paths(ros_dfs: Dict):
 
     plt.show()
 
+def run_models(
+    weather_fn: str,
+    start_date: str,
+    start_time: str,
+    duration: int,
+    slope: int,
+    selected_models: Dict,
+    grass_state: str,
+    grass_curing: int,
+    fuel_load: int,
+    wind_reduction: int) -> Dict:
+
+    """this is where sh*t gets real."""
+    start = dt.datetime.now()
+    weather_df = get_weather(weather_fn)
+    weather_df = trim_weather(weather_df, start_date, start_time, duration)
+
+    MODELS = {
+        'GRASS: Cheney et al. 1998': ros_grass_cheney(weather_df, grass_state, grass_curing, slope),
+        'FOREST: McArthur Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction, slope)
+    }
+
+    model_outputs = {} #model name as key, dataframes as val
+
+    models_run = 0
+    for key, val in selected_models.items():
+        if val:
+            model_outputs[key] = MODELS[key]
+            models_run += 1
+
+    time_elapsed = dt.datetime.now()-start
+    print(f'{models_run} models run in {time_elapsed}')
+    return model_outputs
+
 
 if __name__ == "__main__":
     # general model settings
@@ -242,7 +276,7 @@ if __name__ == "__main__":
     start_date = '20210827'
     start_time = '09:00'
     duration = 24 #hours
-    slope = 20 #but note Cruz et al. for large fires slope effect negligible
+    slope = 0 #but note Cruz et al. for large fires slope effect negligible
 
     # Select the models you wan to run by assigning them 'True'
     selected_models = {
@@ -265,20 +299,17 @@ if __name__ == "__main__":
     ###################################
     ###### DO NOT EDIT BELOW HERE #####
     ###################################
-    weather_df = get_weather(weather_fn)
-    weather_df = trim_weather(weather_df, start_date, start_time, duration)
-
-    MODELS = {
-        'GRASS: Cheney et al. 1998': ros_grass_cheney(weather_df, grass_state, grass_curing, slope),
-        'FOREST: McArthur Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction, slope)
-    }
-
-    model_outputs = {} #model name as key, dataframes as val
-
-    for key, val in selected_models.items():
-        if val:
-            model_outputs[key] = MODELS[key]
-    
+    model_outputs = run_models(
+        weather_fn,
+        start_date,
+        start_time,
+        duration,
+        slope,
+        selected_models,
+        grass_state,
+        grass_curing,
+        fuel_load,wind_reduction
+    )
 
     for key, val in model_outputs.items():
         print(key)
