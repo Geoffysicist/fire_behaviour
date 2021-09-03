@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 # from matplotlib.path import Path
 from typing import Dict, KeysView, List
 from geopandas import GeoDataFrame, points_from_xy
+from shapely.geometry import Point, LineString
 
 
 DATE = 'Local Date'
@@ -29,10 +30,13 @@ DF = 'Drought Factor'
 FFDI = 'FFDI'
 GFDI = 'GFDI'
 DATETIME = 'DateTime'
-FROS = 'FROS km/h' # forward ROS
-ROS = 'flank ROS km/h'
+FROS = 'FROS (km/h)' # forward ROS
+ROS = 'flank ROS (km/h)'
 IG_TIME = 'Ignition time'
 IG_COORDS = 'Ignition coordinates'
+DIR = 'Direction (o)'
+VEC = 'FROS Vector (m)'
+PATHS = 'Path coords'
 
 COORD_SYSTEMS = {
     'GDA94_LL': 'EPSG:4283',
@@ -63,7 +67,6 @@ def coords_to_gdf(coords: List, date: str, time: str) -> GeoDataFrame:
     )
    
     return gdf
-
 
 def get_weather(fn):
     '''reads BOM point weather data into a panda df.
@@ -121,6 +124,19 @@ def post_process(ros_df, slope):
     ros_df = slope_correction(ros_df, slope)
     ros_df[FROS] = np.round(ros_df[FROS],2)
     ros_df[ROS] = np.round(ros_df[ROS],2)
+
+    #calculate the magnitude of the fros vectors
+    times = list(ros_df[DATETIME])
+    direction = list(ros_df[DIR])
+    fros = list(ros_df[FROS])
+    fros_vectors = []
+    for i in range(len(times)-1):
+        time_interval = (times[i+1] - times[i]).total_seconds()/3600
+        fros_vectors.append(int(fros[i] * time_interval * 1000)) # convert to metres
+    
+    fros_vectors.append(0)
+    ros_df[VEC] = fros_vectors
+
     return ros_df
 
 def get_FFDI(weather_df: DataFrame, wind_red: int = 3, flank=False) -> Series:
@@ -179,7 +195,7 @@ def ros_grass_cheney(weather_df: DataFrame, grass_state: str, grass_curing: int,
 
     # create the ros dataframe from the datetime
     ros_df = weather_df[DATETIME].to_frame(name='DateTime')
-    ros_df['Direction'] = spread_direction(weather_df)
+    ros_df[DIR] = spread_direction(weather_df)
 
     #ros
     if grass_state in 'NWF':
@@ -227,7 +243,7 @@ def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int, slope: 
     """McArthur 1973a Mk5 Forest Fire Danger Meter
     """
     ros_df = weather_df[DATETIME].to_frame(name='DateTime')
-    ros_df['Direction'] = spread_direction(weather_df)
+    ros_df[DIR] = spread_direction(weather_df)
     ros_df[FFDI] = get_FFDI(weather_df, wind_red)
 
     ros_df[FROS] = 0.0012*ros_df[FFDI]*fuel_load
@@ -236,32 +252,69 @@ def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int, slope: 
     return post_process(ros_df, slope)
 
 # post processing and output
+def create_path_gdf(ros_df: DataFrame, ignition_date: str, ignition_time: str, ignition_coords: List):
+    """Create a GeoDataFrame of the spread path for plotting and shapefile creation."""
+
+    # convert to grid projection for path calculations
+    ignition_gdf = coords_to_gdf(ignition_coords, ignition_date, ignition_time)
+    ignition_gdf = reproject(ignition_gdf,'MGA94_56')
+
+    vec_dir = list(ros_df[DIR])
+    vec_mag = list(ros_df[VEC])
+
+    x = list(ignition_gdf['geometry'].x)[0]
+    y = list(ignition_gdf['geometry'].y)[0]
+    geometry = []
+
+    for i in range(len(vec_dir)):
+
+        # geo angles are measured CW from N, trig angles are measures ACW fro x axis
+        angle = 90 - (vec_dir[i] - 360)
+        if angle >= 360: angle -= 360
+        angle = m.radians(angle)
+
+        dx = int(vec_mag[i] * m.cos(angle))
+        dy = int(vec_mag[i] * m.sin(angle))
+        geometry.append(LineString([Point(x, y), Point(x+dx, y+dy)]))
+        x += dx
+        y += dy
+    
+    ros_df['geometry'] = geometry
+    ros_gdf = GeoDataFrame(ros_df, geometry='geometry', crs=COORD_SYSTEMS['MGA94_56'])
+
+    return ros_gdf
 
 
 def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List):
     #TODO add ignition point dict - lat, lon proj time.
     """Prduces a vector plot of the path of the fire from FROS model.
     """
+    fig, ax = plt.subplots(1, 1)
+
+    for model, ros_df in ros_dfs.items():
+        path_gdf = create_path_gdf(ros_df, ignition_date, ignition_time, ignition_coords)
+        # path_gdf = reproject(path_gdf, 'GDA94_LL')
+        path_gdf.plot(ax=ax, legend=True)
+        #TODO move tihs to an export function
+        # shapefiles dont support datetimes
+        path_gdf[DATETIME] = np.datetime_as_string(path_gdf[DATETIME])
+        path_gdf.to_file("fire_path.shp")
+
+    plt.show()
+    return None
+
     ignition_gdf = coords_to_gdf(ignition_coords, ignition_date, ignition_time)
-
-    print(ignition_gdf)
     ignition_gdf = reproject(ignition_gdf,'MGA94_56')
-    print(type(list(ignition_gdf['geometry'].x)[0]))
-
-
-    axes = plt.axes()
-    colors = ['blue', 'red']
-    color_id = 1
 
     for model,ros_df in ros_dfs.items():
         times = list(ros_df[DATETIME])
-        direction = list(ros_df['Direction'])
+        direction = list(ros_df[DIR])
         fros = list(ros_df[FROS])
 
         x = list(ignition_gdf['geometry'].x)[0]
         y = list(ignition_gdf['geometry'].y)[0]
         # x = y = 0
-        arrows = []
+        fros_vectors = []
 
         for i in range(len(times)-1):
             time_interval = (times[i+1] - times[i]).total_seconds()/3600
@@ -271,15 +324,22 @@ def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_c
             length = int(fros[i] * time_interval * 1000) # convert to metres
             dx = int(length * m.cos(angle))
             dy = int(length * m.sin(angle))
-            arrows.append([x, y, dx, dy])
+            fros_vectors.append([x, y, dx, dy])
             x += dx
             y += dy
 
+
+    return None
+    axes = plt.axes()
+    colors = ['blue', 'red']
+    color_id = 1
+
+    
         
-        for a in arrows:
-            # axes.arrow(*a, color="k", head_width=16, head_length=128, overhang=1, length_includes_head=True)
-            axes.arrow(*a,  length_includes_head=True, color=colors[color_id])
-            color_id ^= 1
+    for a in fros_vectors:
+        # axes.arrow(*a, color="k", head_width=16, head_length=128, overhang=1, length_includes_head=True)
+        axes.arrow(*a,  length_includes_head=True, color=colors[color_id])
+        color_id ^= 1
 
     plt.show()
 
@@ -329,7 +389,7 @@ if __name__ == "__main__":
     duration = 24 #hours
     slope = 0 #but note Cruz et al. for large fires slope effect negligible
 
-    # Select the models you wan to run by assigning them 'True'
+    # Select the models you want to run by assigning them 'True'
     selected_models = {
         'GRASS: Cheney et al. 1998': True,
         'FOREST: McArthur Mk5': True
@@ -343,7 +403,7 @@ if __name__ == "__main__":
     grass_curing = 85 # per cent should between 20 and 100
 
     #forest
-    fuel_load = 20 # t/ha
+    fuel_load = 15 # t/ha
     wind_reduction = 3 # Tolhurst's wind reduction factor between 1 - 6
 
 
