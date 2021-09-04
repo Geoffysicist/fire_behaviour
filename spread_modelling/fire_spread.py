@@ -284,7 +284,6 @@ def create_path_gdf(ros_df: DataFrame, ignition_date: str, ignition_time: str, i
 
     return ros_gdf
 
-
 def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List):
     #TODO add ignition point dict - lat, lon proj time.
     """Prduces a vector plot of the path of the fire from FROS model.
@@ -293,7 +292,7 @@ def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_c
 
     for model, ros_df in ros_dfs.items():
         path_gdf = create_path_gdf(ros_df, ignition_date, ignition_time, ignition_coords)
-        # path_gdf = reproject(path_gdf, 'GDA94_LL')
+        path_gdf = reproject(path_gdf, 'GDA94_LL')
         path_gdf.plot(ax=ax, legend=True)
         #TODO move tihs to an export function
         # shapefiles dont support datetimes
@@ -302,46 +301,6 @@ def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_c
 
     plt.show()
     return None
-
-    ignition_gdf = coords_to_gdf(ignition_coords, ignition_date, ignition_time)
-    ignition_gdf = reproject(ignition_gdf,'MGA94_56')
-
-    for model,ros_df in ros_dfs.items():
-        times = list(ros_df[DATETIME])
-        direction = list(ros_df[DIR])
-        fros = list(ros_df[FROS])
-
-        x = list(ignition_gdf['geometry'].x)[0]
-        y = list(ignition_gdf['geometry'].y)[0]
-        # x = y = 0
-        fros_vectors = []
-
-        for i in range(len(times)-1):
-            time_interval = (times[i+1] - times[i]).total_seconds()/3600
-            angle = 90 - (direction[i] - 360)
-            if angle >= 360: angle -= 360
-            angle = m.radians(angle)
-            length = int(fros[i] * time_interval * 1000) # convert to metres
-            dx = int(length * m.cos(angle))
-            dy = int(length * m.sin(angle))
-            fros_vectors.append([x, y, dx, dy])
-            x += dx
-            y += dy
-
-
-    return None
-    axes = plt.axes()
-    colors = ['blue', 'red']
-    color_id = 1
-
-    
-        
-    for a in fros_vectors:
-        # axes.arrow(*a, color="k", head_width=16, head_length=128, overhang=1, length_includes_head=True)
-        axes.arrow(*a,  length_includes_head=True, color=colors[color_id])
-        color_id ^= 1
-
-    plt.show()
 
 def run_models(
     weather_fn: str,
@@ -380,19 +339,19 @@ def run_models(
 
 if __name__ == "__main__":
     # general model settings
-    weather_fn = 'data\TestPointForecast.csv'
-    start_date = '20210827'
-    start_time = '09:00'
+    weather_fn = 'data\\2000-01-08-XX-XX-XX_PointForecast.csv'
+    start_date = '20000108'
+    start_time = '16:00'
     ignition_date = start_date
     ignition_time = start_time
-    ignition_coords = [-30.80132, 152.97958, 'GDA94_LL'] #GDA94_LL or MGA94_Zxx where xx = zone
-    duration = 24 #hours
+    ignition_coords = [-34.8350, 148.4186, 'GDA94_LL'] #GDA94_LL or MGA94_Zxx where xx = zone
+    duration = 17 #hours
     slope = 0 #but note Cruz et al. for large fires slope effect negligible
 
     # Select the models you want to run by assigning them 'True'
     selected_models = {
         'GRASS: Cheney et al. 1998': True,
-        'FOREST: McArthur Mk5': True
+        'FOREST: McArthur Mk5': False
     }
 
     # model specific data
@@ -400,10 +359,10 @@ if __name__ == "__main__":
     #   W - woodland (canopy cover < 30%),
     #   F - Open forest (canopy cover 30-70%, 10-15 m tall)
     grass_state = 'W' 
-    grass_curing = 85 # per cent should between 20 and 100
+    grass_curing = 95 # per cent should between 20 and 100
 
     #forest
-    fuel_load = 15 # t/ha
+    fuel_load = 5 # t/ha
     wind_reduction = 3 # Tolhurst's wind reduction factor between 1 - 6
 
 
