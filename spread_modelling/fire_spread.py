@@ -281,23 +281,35 @@ def create_path_gdf(ros_df: DataFrame, ignition_date: str, ignition_time: str, i
     
     ros_df['geometry'] = geometry
     ros_gdf = GeoDataFrame(ros_df, geometry='geometry', crs=COORD_SYSTEMS['MGA94_56'])
+    ros_gdf = reproject(ros_gdf, ignition_coords[2]) #change back to original projection
 
     return ros_gdf
 
-def plot_paths(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List):
-    #TODO add ignition point dict - lat, lon proj time.
+def get_gdfs(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List) -> Dict:
+    """Prduces GeoDataFrames with the path of the fire from FROS model.
+    """
+    gdf_dict = {}
+    for model, ros_df in ros_dfs.items():
+        
+        gdf_dict[model] = create_path_gdf(ros_df, ignition_date, ignition_time, ignition_coords)
+
+    return gdf_dict
+
+def save_shapefiles(gdf_dict, output_fn):
+    #TODO move tihs to an export function
+    # shapefiles dont support datetimes
+
+    for model, gdf in gdf_dict.items():
+        gdf[DATETIME] = np.datetime_as_string(gdf[DATETIME], unit='m') # minute precision
+        gdf.to_file(f'{output_fn}_{model}.shp')
+
+def plot_paths(gdf_dict: Dict) -> None:
     """Prduces a vector plot of the path of the fire from FROS model.
     """
     fig, ax = plt.subplots(1, 1)
 
-    for model, ros_df in ros_dfs.items():
-        path_gdf = create_path_gdf(ros_df, ignition_date, ignition_time, ignition_coords)
-        path_gdf = reproject(path_gdf, 'GDA94_LL')
-        path_gdf.plot(ax=ax, legend=True)
-        #TODO move tihs to an export function
-        # shapefiles dont support datetimes
-        path_gdf[DATETIME] = np.datetime_as_string(path_gdf[DATETIME])
-        path_gdf.to_file("fire_path.shp")
+    for model, gdf in gdf_dict.items():
+        gdf.plot(ax=ax, legend=True)
 
     plt.show()
     return None
@@ -320,8 +332,8 @@ def run_models(
     weather_df = trim_weather(weather_df, start_date, start_time, duration)
 
     MODELS = {
-        'GRASS: Cheney et al. 1998': ros_grass_cheney(weather_df, grass_state, grass_curing, slope),
-        'FOREST: McArthur Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction, slope)
+        'GRASS_Cheney_98': ros_grass_cheney(weather_df, grass_state, grass_curing, slope),
+        'FOREST_Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction, slope)
     }
 
     model_outputs = {} #model name as key, dataframes as val
@@ -338,6 +350,7 @@ def run_models(
 
 
 if __name__ == "__main__":
+    # TODO change model settings to dictionaries
     # general model settings
     weather_fn = 'data\\2000-01-08-XX-XX-XX_PointForecast.csv'
     start_date = '20000108'
@@ -347,11 +360,12 @@ if __name__ == "__main__":
     ignition_coords = [-34.8350, 148.4186, 'GDA94_LL'] #GDA94_LL or MGA94_Zxx where xx = zone
     duration = 17 #hours
     slope = 0 #but note Cruz et al. for large fires slope effect negligible
+    path_output_fn = 'test1'
 
     # Select the models you want to run by assigning them 'True'
     selected_models = {
-        'GRASS: Cheney et al. 1998': True,
-        'FOREST: McArthur Mk5': False
+        'GRASS_Cheney_98': True,
+        'FOREST_Mk5': True
     }
 
     # model specific data
@@ -381,13 +395,20 @@ if __name__ == "__main__":
         fuel_load,wind_reduction
     )
 
-    # print(model_outputs)
+    # Print tables of the models
+    for key, val in model_outputs.items():
+        print(key)
+        print(val)
+        print('\n')
 
-    # for key, val in model_outputs.items():
-    #     print(key)
-    #     print(val)
-    #     print('\n')
+    # do this after printing the models so dont get linestrings
+    model_gdfs = get_gdfs(model_outputs, ignition_date, ignition_time, ignition_coords)
 
-    plot_paths(model_outputs, ignition_date, ignition_time, ignition_coords)
+    # Save shapefile of the fire path
+    save_shapefiles(model_gdfs, path_output_fn)
+
+    # Show simple plot of the model
+    # plot_paths(model_outputs, ignition_date, ignition_time, ignition_coords)
+    plot_paths(model_gdfs)
 
     print('fire spread done')
