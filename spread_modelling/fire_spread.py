@@ -29,17 +29,20 @@ WIND_SPEED = 'Wind Speed (km/h)'
 DF = 'Drought Factor'
 FFDI = 'FFDI'
 GFDI = 'GFDI'
+MC = 'Moisture content %'
+MF = 'Moisture function'
 DATETIME = 'DateTime'
 FROS = 'FROS (km/h)' # forward ROS
 ROS = 'flank ROS (km/h)'
 IG_TIME = 'Ignition time'
 IG_COORDS = 'Ignition coordinates'
 DIR = 'Direction (o)'
-VEC = 'FROS Vector (m)'
+VEC = 'FROS vector (m)'
 PATHS = 'Path coords'
 
 COORD_SYSTEMS = {
     'GDA94_LL': 'EPSG:4283',
+    'WGS84_LL': 'EPSG:4326',
     'MGA94_49': 'EPSG:28349',
     'MGA94_50': 'EPSG:28350',
     'MGA94_51': 'EPSG:28351',
@@ -106,6 +109,18 @@ def trim_weather(weather_df, start_date, start_time, duration):
     
     return weather_df[(weather_df[DATETIME] >= start_datetime) & (weather_df[DATETIME] <= finish_datetime)]
 
+def weather_to_amicus_csv(weather_df: DataFrame, file_name: str = 'test.csv') -> None:
+    """Exports the weather dataframe as a csv file formatted for importing into Amicus."""
+    amicus_df = weather_df[DATETIME].to_frame(name='Date time')
+    amicus_df['Air temperature (\u00b0C)'] = weather_df[TEMP]
+    amicus_df['Relative humidity (%)'] = weather_df[RH]
+    amicus_df['10 m wind speed (km/h)'] = weather_df[WIND_SPEED]
+    amicus_df['Wind direction (\u00b0)'] = weather_df[WIND_DIR]
+    amicus_df['Cloud cover (%)'] = 0
+
+    amicus_df.to_csv(file_name, index=False, date_format="%d/%m/%Y %H:%M", encoding='ANSI')
+
+
 def spread_direction(weather_df: DataFrame) -> DataFrame:
     """ Converts wind direction to spread direction"""
     return np.where(
@@ -115,28 +130,10 @@ def spread_direction(weather_df: DataFrame) -> DataFrame:
     )
 
 def slope_correction(ros_df: DataFrame, slope: int) -> DataFrame:
+    #TODO implement this
     """Adjusts ROS for slope according to Eqn 2.1
     """
     ros_df[FROS] = ros_df[FROS] * m.exp(0.069*slope)
-    return ros_df
-
-def post_process(ros_df, slope):
-    ros_df = slope_correction(ros_df, slope)
-    ros_df[FROS] = np.round(ros_df[FROS],2)
-    ros_df[ROS] = np.round(ros_df[ROS],2)
-
-    #calculate the magnitude of the fros vectors
-    times = list(ros_df[DATETIME])
-    direction = list(ros_df[DIR])
-    fros = list(ros_df[FROS])
-    fros_vectors = []
-    for i in range(len(times)-1):
-        time_interval = (times[i+1] - times[i]).total_seconds()/3600
-        fros_vectors.append(int(fros[i] * time_interval * 1000)) # convert to metres
-    
-    fros_vectors.append(0)
-    ros_df[VEC] = fros_vectors
-
     return ros_df
 
 def get_FFDI(weather_df: DataFrame, wind_red: int = 3, flank=False) -> Series:
@@ -159,22 +156,113 @@ def get_FFDI(weather_df: DataFrame, wind_red: int = 3, flank=False) -> Series:
     # return np.round(ffdi, 1) 
     return ffdi   
 
+
+#### post processing and output  ####
+def post_process(ros_df):
+    """Rounds values to 2 decimal places and adds ROS vectors.
+    """
+    ros_df[FROS] = np.round(ros_df[FROS],2)
+    ros_df[ROS] = np.round(ros_df[ROS],2)
+
+    #calculate the magnitude of the fros vectors
+    # TODO move this to paths
+    times = list(ros_df[DATETIME])
+    direction = list(ros_df[DIR])
+    fros = list(ros_df[FROS])
+    fros_vectors = [0] # first vector is 0 ie starting point
+    for i, time in enumerate(times[:-1]):
+        time_interval = (times[i+1] - time).total_seconds()/3600 # convert time interval to hours
+        # TODO store fros vector as complex number and add vectors 
+        fros_vectors.append(int(fros[i] * time_interval * 1000)) # convert to metres
+    
+    # fros_vectors.append(0)
+    ros_df[VEC] = fros_vectors
+
+    return ros_df
+
+def save_csvs(ros_df_dict: Dict, output_fn):
+    for model, df in ros_df_dict.items():
+        df.to_csv(f'{output_fn}_{model}.csv', index=False)
+
+def create_path_gdf(ros_df: DataFrame, ignition_date: str, ignition_time: str, ignition_coords: List):
+    """Create a GeoDataFrame of the spread path for plotting and shapefile creation."""
+
+    # convert to grid projection for path calculations
+    ignition_gdf = coords_to_gdf(ignition_coords, ignition_date, ignition_time)
+    ignition_gdf = reproject(ignition_gdf,'MGA94_56')
+
+    vec_dir = list(ros_df[DIR])
+    vec_mag = list(ros_df[VEC])
+
+    x = list(ignition_gdf['geometry'].x)[0]
+    y = list(ignition_gdf['geometry'].y)[0]
+    geometry = []
+
+    for i in range(len(vec_dir)):
+
+        # geo angles are measured CW from N, trig angles are measures ACW fro x axis
+        angle = 90 - (vec_dir[i] - 360)
+        if angle >= 360: angle -= 360
+        angle = m.radians(angle)
+
+        dx = int(vec_mag[i] * m.cos(angle))
+        dy = int(vec_mag[i] * m.sin(angle))
+        geometry.append(LineString([Point(x, y), Point(x+dx, y+dy)]))
+        x += dx
+        y += dy
+    
+    ros_df['geometry'] = geometry
+    ros_gdf = GeoDataFrame(ros_df, geometry='geometry', crs=COORD_SYSTEMS['MGA94_56'])
+    ros_gdf = reproject(ros_gdf, ignition_coords[2]) #change back to original projection
+
+    return ros_gdf
+
+def get_gdfs(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List) -> Dict:
+    """Prduces GeoDataFrames with the path of the fire from FROS model.
+    """
+    gdf_dict = {}
+    for model, ros_df in ros_dfs.items():
+        
+        gdf_dict[model] = create_path_gdf(ros_df, ignition_date, ignition_time, ignition_coords)
+
+    return gdf_dict
+
+def save_shapefiles(gdf_dict, output_fn):
+    #TODO move this to an export function
+    # shapefiles dont support datetimes
+
+    for model, gdf in gdf_dict.items():
+        gdf[DATETIME] = np.datetime_as_string(gdf[DATETIME], unit='m') # minute precision
+        gdf.to_file(f'{output_fn}_{model}.shp')
+
+def plot_paths(gdf_dict: Dict) -> None:
+    """Prduces a vector plot of the path of the fire from FROS model.
+    """
+    fig, ax = plt.subplots(1, 1)
+
+    # TODO change so that get all models plotted
+    for model, gdf in gdf_dict.items():
+        gdf.plot(ax=ax, legend=True)
+
+    plt.show()
+    return None
+
+
 #### FIRE SPREAD MODELS #####
-def ros_grass_cheney(weather_df: DataFrame, grass_state: str, grass_curing: int, slope: int):
+def ros_grass_cheney(weather_df: DataFrame, grass_state: str, grass_curing: int):
     """Cheney et al. 1998
     inputs: 
-        Wind speed 10m (km/h)
-        Temperature (oC)
-        Relative Humidity (%)
+        from weathr dataframe:
+          Wind speed 10m (km/h)
+          Temperature (oC)
+          Relative Humidity (%)
         Curing level (%)
         Grass state - natural (N), grazed (G), eaten out (E), (W) Woodlands, (F) Open forest
     """
     grass_state = grass_state.upper()
-    # TODO raise error curing is out of range 20 - 100
     if grass_curing <= 20:
         grass_curing = 20
-        # raise ValueError(f'Curing coefficient {grass_curing} outside model range 20 < C < 100')
-
+    
     # dead fuel moisture content from weather data Eqn 3.8
     dead_fuel_mc = 9.58 - 0.205*weather_df[TEMP] + 0.138 *weather_df[RH]
     grass_df = dead_fuel_mc.to_frame(name='dead_fuel_mc')
@@ -237,9 +325,9 @@ def ros_grass_cheney(weather_df: DataFrame, grass_state: str, grass_curing: int,
     else:
         raise ValueError('Not a valid grass state')
 
-    return post_process(ros_df, slope)
+    return post_process(ros_df)
 
-def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int, slope: int) -> DataFrame:
+def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int) -> DataFrame:
     """McArthur 1973a Mk5 Forest Fire Danger Meter
     """
     ros_df = weather_df[DATETIME].to_frame(name='DateTime')
@@ -249,71 +337,43 @@ def ros_forest_mk5(weather_df: DataFrame, fuel_load: int, wind_red: int, slope: 
     ros_df[FROS] = 0.0012*ros_df[FFDI]*fuel_load
     ros_df[ROS] = 0.0012*get_FFDI(weather_df, flank=True)*fuel_load
 
-    return post_process(ros_df, slope)
+    return post_process(ros_df)
 
-# post processing and output
-def create_path_gdf(ros_df: DataFrame, ignition_date: str, ignition_time: str, ignition_coords: List):
-    """Create a GeoDataFrame of the spread path for plotting and shapefile creation."""
+def ros_forest_vesta(weather_df: DataFrame, params: Dict) -> DataFrame:
+    """McArthur 1973a Mk5 Forest Fire Danger Meter
+    """
+    ros_df = weather_df[DATETIME].to_frame(name='DateTime')
+    ros_df[DIR] = spread_direction(weather_df)
 
-    # convert to grid projection for path calculations
-    ignition_gdf = coords_to_gdf(ignition_coords, ignition_date, ignition_time)
-    ignition_gdf = reproject(ignition_gdf,'MGA94_56')
+    # determine moisture content
+    # ros_df['hour'] = ros_df[DATETIME].dt.hour
+    ros_df[MC] = np.where(
+        (weather_df[DATETIME].dt.hour >= 9) & (weather_df[DATETIME].dt.hour < 20),
+        np.where(
+            (weather_df[DATETIME].dt.hour >= 12) & (weather_df[DATETIME].dt.hour < 17), 
+            2.76 + (0.124*weather_df[RH]) - (0.0187*weather_df[TEMP]), 
+            3.6 + (0.169*weather_df[RH]) - (0.045*weather_df[TEMP])
+        ),
+        3.08 + (0.198*weather_df[RH]) - (0.0483*weather_df[TEMP])
+    )
 
-    vec_dir = list(ros_df[DIR])
-    vec_mag = list(ros_df[VEC])
+    # determine moisture function
+    ros_df[MF] = 18.35 * ros_df[MC]**-1.495
 
-    x = list(ignition_gdf['geometry'].x)[0]
-    y = list(ignition_gdf['geometry'].y)[0]
-    geometry = []
+    # determine the ROS
+    ros_df[ROS] = 30.0 * ros_df[MF] / 1000
+    ros_df[FROS] = np.where(
+        weather_df[WIND_SPEED] > 5,
+        ((30.0 + 1.531 * (weather_df[WIND_SPEED]-5)**0.8576 * params['fhs_surface']**0.93 * (params['fhs_near_surface']*params['fuel_height_ns_cm'])**0.637 * 1.03 ) * ros_df[MF])/1000,
+        ros_df[ROS]
+    )
 
-    for i in range(len(vec_dir)):
 
-        # geo angles are measured CW from N, trig angles are measures ACW fro x axis
-        angle = 90 - (vec_dir[i] - 360)
-        if angle >= 360: angle -= 360
-        angle = m.radians(angle)
-
-        dx = int(vec_mag[i] * m.cos(angle))
-        dy = int(vec_mag[i] * m.sin(angle))
-        geometry.append(LineString([Point(x, y), Point(x+dx, y+dy)]))
-        x += dx
-        y += dy
     
-    ros_df['geometry'] = geometry
-    ros_gdf = GeoDataFrame(ros_df, geometry='geometry', crs=COORD_SYSTEMS['MGA94_56'])
-    ros_gdf = reproject(ros_gdf, ignition_coords[2]) #change back to original projection
+    # return ros_df
+    return post_process(ros_df)
 
-    return ros_gdf
-
-def get_gdfs(ros_dfs: Dict, ignition_date: str, ignition_time: str, ignition_coords: List) -> Dict:
-    """Prduces GeoDataFrames with the path of the fire from FROS model.
-    """
-    gdf_dict = {}
-    for model, ros_df in ros_dfs.items():
-        
-        gdf_dict[model] = create_path_gdf(ros_df, ignition_date, ignition_time, ignition_coords)
-
-    return gdf_dict
-
-def save_shapefiles(gdf_dict, output_fn):
-    #TODO move tihs to an export function
-    # shapefiles dont support datetimes
-
-    for model, gdf in gdf_dict.items():
-        gdf[DATETIME] = np.datetime_as_string(gdf[DATETIME], unit='m') # minute precision
-        gdf.to_file(f'{output_fn}_{model}.shp')
-
-def plot_paths(gdf_dict: Dict) -> None:
-    """Prduces a vector plot of the path of the fire from FROS model.
-    """
-    fig, ax = plt.subplots(1, 1)
-
-    for model, gdf in gdf_dict.items():
-        gdf.plot(ax=ax, legend=True)
-
-    plt.show()
-    return None
-
+#### MODEL EXECUTION ####
 def run_models(
     weather_fn: str,
     start_date: str,
@@ -324,7 +384,9 @@ def run_models(
     grass_state: str,
     grass_curing: int,
     fuel_load: int,
-    wind_reduction: int) -> Dict:
+    wind_reduction: int,
+    params_vesta: Dict
+    ) -> Dict:
 
     """this is where sh*t gets real."""
     start = dt.datetime.now()
@@ -332,11 +394,12 @@ def run_models(
     weather_df = trim_weather(weather_df, start_date, start_time, duration)
 
     MODELS = {
-        'GRASS_Cheney_98': ros_grass_cheney(weather_df, grass_state, grass_curing, slope),
-        'FOREST_Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction, slope)
+        'GRASS_Cheney_98': ros_grass_cheney(weather_df, grass_state, grass_curing),
+        'FOREST_Mk5': ros_forest_mk5(weather_df, fuel_load, wind_reduction),
+        'FOREST_Vesta': ros_forest_vesta(weather_df, params_vesta),
     }
 
-    model_outputs = {} #model name as key, dataframes as val
+    model_outputs = {} # model name as key, dataframes as val
 
     models_run = 0
     for key, val in selected_models.items():
@@ -364,8 +427,9 @@ if __name__ == "__main__":
 
     # Select the models you want to run by assigning them 'True'
     selected_models = {
-        'GRASS_Cheney_98': True,
-        'FOREST_Mk5': True
+        'GRASS_Cheney_98': False,
+        'FOREST_Mk5': True,
+        'FOREST_Vesta': True
     }
 
     # model specific data
@@ -375,14 +439,28 @@ if __name__ == "__main__":
     grass_state = 'W' 
     grass_curing = 95 # per cent should between 20 and 100
 
-    #forest
+    #forest MK5
     fuel_load = 5 # t/ha
     wind_reduction = 3 # Tolhurst's wind reduction factor between 1 - 6
 
+    #forst Vesta
+    # forest vesta
+    params_vesta = {
+        'fhs_surface': 3,
+        'fhs_near_surface': 3,
+        'fhs_elevated': 2,
+        'fuel_height_ns_cm': 25,
+        'fuel_height_e_m': 1.5
+    }
 
     ###################################
     ###### DO NOT EDIT BELOW HERE #####
     ###################################
+    weather_df = get_weather(weather_fn)
+    weather_df = trim_weather(weather_df, start_date, start_time, duration)
+    weather_to_amicus_csv(weather_df)
+
+
     model_outputs = run_models(
         weather_fn,
         start_date,
@@ -392,7 +470,8 @@ if __name__ == "__main__":
         selected_models,
         grass_state,
         grass_curing,
-        fuel_load,wind_reduction
+        fuel_load,wind_reduction,
+        params_vesta
     )
 
     # Print tables of the models
@@ -401,14 +480,16 @@ if __name__ == "__main__":
         print(val)
         print('\n')
 
-    # do this after printing the models so dont get linestrings
-    model_gdfs = get_gdfs(model_outputs, ignition_date, ignition_time, ignition_coords)
+    save_csvs(model_outputs,path_output_fn)
 
-    # Save shapefile of the fire path
-    save_shapefiles(model_gdfs, path_output_fn)
+    # # do this after printing the models so dont get linestrings
+    # model_gdfs = get_gdfs(model_outputs, ignition_date, ignition_time, ignition_coords)
 
-    # Show simple plot of the model
-    # plot_paths(model_outputs, ignition_date, ignition_time, ignition_coords)
-    plot_paths(model_gdfs)
+    # # Save shapefile of the fire path
+    # # save_shapefiles(model_gdfs, path_output_fn)
+
+    # # Show simple plot of the model
+    # # plot_paths(model_outputs, ignition_date, ignition_time, ignition_coords)
+    # plot_paths(model_gdfs)
 
     print('fire spread done')
