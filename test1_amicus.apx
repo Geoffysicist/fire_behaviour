@@ -1,0 +1,143 @@
+<!DOCTYPE serializeddata>
+<project name="Amicus">
+ <headerInfo fileFormatVersion="1" applicationMajorVersion="0" applicationMinorVersion="5" applicationPatchVersion="39682"/>
+ <globalNameValues>
+  <input globalname="Aspect">0</input>
+  <input globalname="Buttongrass/Moisture content prediction model selection"></input>
+  <input globalname="Buttongrass/Years since last fire">10</input>
+  <input globalname="Cloud type selection">Percentage</input>
+  <input globalname="Degrees of curing">85</input>
+  <input globalname="Drought index">100</input>
+  <input globalname="Elevated fuel height">1.5</input>
+  <input globalname="Elevation">0</input>
+  <input globalname="Fine fuel load - forests">21</input>
+  <input globalname="Fine fuel load - shrublands">12.5</input>
+  <input globalname="Forest fuel type selection"></input>
+  <input globalname="Forest measured FMC">7</input>
+  <input globalname="Fuel load per hectare">3</input>
+  <input globalname="Grass measured FMC">9</input>
+  <input globalname="Grassland fuel type selection"></input>
+  <input globalname="Hours since rain">0</input>
+  <input globalname="Latitude">0</input>
+  <input globalname="Longitude">0</input>
+  <input globalname="MaritimePine/Canopy base height">6</input>
+  <input globalname="MaritimePine/Canopy fuel load">10</input>
+  <input globalname="MaritimePine/Fine dead litter">7</input>
+  <input globalname="MaritimePine/Other surface fuel load">6</input>
+  <input globalname="MaritimePine/Specify fine dead litter">0</input>
+  <input globalname="MaritimePine/Stand height">20</input>
+  <input globalname="MaritimePine/Surface fine fuel load">5</input>
+  <input globalname="MaritimePine/Toggle run">0</input>
+  <input globalname="MaritimePine/Understorey fuel selection">Litter and shrubby understorey</input>
+  <input globalname="MaritimePine/Wind attenuation coefficient">1.2</input>
+  <input globalname="Measurement elevation">0</input>
+  <input globalname="Moist conditions prescribed burn toggle">1</input>
+  <input globalname="Moist conditions wildfire toggle">0</input>
+  <input globalname="Notes"></input>
+  <input globalname="Number of days since rain">5</input>
+  <input globalname="Override predicted grass FMC">0</input>
+  <input globalname="Plantation fuel type selection"></input>
+  <input globalname="RadiataPine/Canopy base height">0.5</input>
+  <input globalname="RadiataPine/Canopy fuel load">11</input>
+  <input globalname="RadiataPine/Fine 1hr FMC">0.050000000000000003</input>
+  <input globalname="RadiataPine/Fine dead litter">7</input>
+  <input globalname="RadiataPine/Large 100hr FMC">0.070000000000000007</input>
+  <input globalname="RadiataPine/Live herbaceous FMC">0.029999999999999999</input>
+  <input globalname="RadiataPine/Live shrub FMC">0.10000000000000001</input>
+  <input globalname="RadiataPine/Live shrubby">75</input>
+  <input globalname="RadiataPine/Medium 10hr FMC">0.059999999999999998</input>
+  <input globalname="RadiataPine/Other surface fuel load">2</input>
+  <input globalname="RadiataPine/Specify fine dead litter">0</input>
+  <input globalname="RadiataPine/Stand height">8</input>
+  <input globalname="RadiataPine/Surface fine fuel load">4</input>
+  <input globalname="RadiataPine/Toggle run">0</input>
+  <input globalname="RadiataPine/Understorey fuel selection">Litter and shrubby understorey</input>
+  <input globalname="RadiataPine/Wind attenuation coefficient">1.6000000000000001</input>
+  <input globalname="Rainfall since 9 am">20</input>
+  <input globalname="SemiAridHeath/Elevated fuel layer Fuel Hazard Score">2</input>
+  <input globalname="SemiAridHeath/Near-surface fuel layer percent cover score">2</input>
+  <input globalname="SemiAridMalleeHeath/Mallee overstorey height">1</input>
+  <input globalname="SemiAridMalleeHeath/Overstorey mallee cover">10</input>
+  <input globalname="Short Rotation Eucalypt ground cover selection"></input>
+  <input globalname="ShortRotationEucalypt/SouthernGrass/Pasture">0</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/Fuel hazard type selection"></input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardRating/Bark ratings selection">Low</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardRating/Near-surface fuel hazard rating">4</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardRating/Surface fuel hazard rating">6</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardScore/Bark hazard score">0</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardScore/Near-surface fuel hazard score">3</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardScore/Near-surface fuel height">20</input>
+  <input globalname="ShortRotationEucalypt/Wildfire/HazardScore/Surface fuel hazard score">3.5</input>
+  <input globalname="ShortRotationEucalypt/Wind reduction factor">0.80000000000000004</input>
+  <input globalname="Shrubland fuel type selection"></input>
+  <input globalname="Shrubland measured FMC">7</input>
+  <input globalname="Slope">0</input>
+  <input globalname="SouthernGrass/Pasture">1</input>
+  <input globalname="Specified drought factor">5</input>
+  <input globalname="Specify a drought factor">0</input>
+  <input globalname="Spinifex cover">50</input>
+  <input globalname="Spinifex height">20</input>
+  <input globalname="Spinifex measured FMC">12</input>
+  <input globalname="Spinifex/Fuel load per hectare">5</input>
+  <input globalname="Spinifex/Spinifex model selection"></input>
+  <input globalname="TemperateShrubland/Average vegetation height">2</input>
+  <input globalname="TemperateShrubland/Woodland overstorey">0</input>
+  <input globalname="Use measured forest FMC">0</input>
+  <input globalname="Use measured shrubland FMC">0</input>
+  <input globalname="Wet eucalypt shrub type">0</input>
+  <input globalname="Wildfire/Fuel hazard type selection">Fuel hazard rating</input>
+  <input globalname="Wildfire/HazardRating/Bark ratings selection">Moderate</input>
+  <input globalname="Wildfire/HazardRating/Near-surface fuel hazard rating">4</input>
+  <input globalname="Wildfire/HazardRating/Surface fuel hazard rating">6</input>
+  <input globalname="Wildfire/HazardScore/Bark hazard score">1</input>
+  <input globalname="Wildfire/HazardScore/Near-surface fuel hazard score">3</input>
+  <input globalname="Wildfire/HazardScore/Near-surface fuel height">25</input>
+  <input globalname="Wildfire/HazardScore/Surface fuel hazard score">3.5</input>
+  <input globalname="Wind height selection">10 metres</input>
+  <input globalname="Wind reduction factor">3</input>
+ </globalNameValues>
+ <meteorologyData weatherTable="DateTime,Temperature,Humidity,WindSpeed10m,WindDirection,CloudPercent,Source,Notes&#xa;8/01/2000 16:00,38.200000000000003,9.9000000000000004,55,300,0,,&#xa;8/01/2000 17:00,36.399999999999999,10.800000000000001,45.700000000000003,260,0,,&#xa;8/01/2000 18:00,37.200000000000003,10.9,46.5,258,0,,&#xa;8/01/2000 19:00,37.299999999999997,11.699999999999999,46.299999999999997,260,0,,&#xa;8/01/2000 20:00,35,14.1,48.299999999999997,261,0,,&#xa;8/01/2000 21:00,34.5,14.5,30,265,0,,&#xa;8/01/2000 22:00,34.299999999999997,14.300000000000001,28.199999999999999,261,0,,&#xa;8/01/2000 23:00,31.199999999999999,16.300000000000001,26.300000000000001,257,0,,&#xa;9/01/2000 00:00,28.800000000000001,24.199999999999999,17.199999999999999,262,0,,&#xa;9/01/2000 01:00,27,32.899999999999999,18.5,249,0,,&#xa;9/01/2000 02:00,25.199999999999999,40.200000000000003,19.100000000000001,247,0,,&#xa;9/01/2000 03:00,22.399999999999999,44.5,25.699999999999999,237,0,,&#xa;9/01/2000 04:00,18.399999999999999,48.399999999999999,21.5,245,0,,&#xa;9/01/2000 05:00,16,48.700000000000003,20.600000000000001,248,0,,&#xa;9/01/2000 06:00,14.4,51,21.100000000000001,246,0,,&#xa;9/01/2000 07:00,14.300000000000001,55,27.699999999999999,240,0,,&#xa;9/01/2000 08:00,15.800000000000001,52,24.100000000000001,220,0,,&#xa;9/01/2000 09:00,17.699999999999999,42,22.300000000000001,230,0,,&#xa;"/>
+ <scenarioData scenarioCount="3">
+  <scenario name="test1_grass" description="grazed, 85% curing" type="GrassContinuousOpen">
+   <fuel value="false" type="MeasuredGrassFMCToggle"/>
+   <fuel value="9" type="MeasuredGrassFMC"/>
+   <fuel value="85" type="GrassCuring"/>
+   <fuel value="3" type="GrassFuelLoad"/>
+   <fuel value="Cut/Grazed" type="PastureCondition"/>
+   <fuel value="true" type="WildfireToggle"/>
+   <fuel value="true" type="PlotToggle"/>
+  </scenario>
+  <scenario name="test1_vesta_fhr" description="" type="DryEucalyptWildfireFuelHazardRating">
+   <fuel value="Fuel hazard rating" type="EucalyptFuelHazardType"/>
+   <fuel value="3.5" type="EucalyptSurfaceFHS"/>
+   <fuel value="Very High" type="EucalyptSurfaceFHR"/>
+   <fuel value="3" type="EucalyptNearSurfaceFHS"/>
+   <fuel value="High" type="EucalyptNearSurfaceFHR"/>
+   <fuel value="1" type="EucalyptBarkHS"/>
+   <fuel value="Moderate" type="EucalyptBarkHR"/>
+   <fuel value="1.5" type="EucalyptElevatedFuelHeight"/>
+   <fuel value="21" type="ForestFuelLoad"/>
+   <fuel value="25" type="EucalyptNearSurfaceFuelHeight"/>
+   <fuel value="false" type="MeasuredForestFMCToggle"/>
+   <fuel value="7" type="MeasuredForestFMC"/>
+   <fuel value="true" type="WildfireToggle"/>
+   <fuel value="true" type="PlotToggle"/>
+  </scenario>
+  <scenario name="test1_vesta_fhs" description="" type="DryEucalyptWildfireFuelHazardScore">
+   <fuel value="Fuel hazard score" type="EucalyptFuelHazardType"/>
+   <fuel value="3.5" type="EucalyptSurfaceFHS"/>
+   <fuel value="Very High" type="EucalyptSurfaceFHR"/>
+   <fuel value="3" type="EucalyptNearSurfaceFHS"/>
+   <fuel value="High" type="EucalyptNearSurfaceFHR"/>
+   <fuel value="1" type="EucalyptBarkHS"/>
+   <fuel value="Moderate" type="EucalyptBarkHR"/>
+   <fuel value="1.5" type="EucalyptElevatedFuelHeight"/>
+   <fuel value="21" type="ForestFuelLoad"/>
+   <fuel value="25" type="EucalyptNearSurfaceFuelHeight"/>
+   <fuel value="false" type="MeasuredForestFMCToggle"/>
+   <fuel value="7" type="MeasuredForestFMC"/>
+   <fuel value="true" type="WildfireToggle"/>
+   <fuel value="true" type="PlotToggle"/>
+  </scenario>
+ </scenarioData>
+</project>
