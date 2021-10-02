@@ -125,7 +125,8 @@ def weather_to_amicus_csv(weather_df: DataFrame, output_fn) -> None:
     amicus_df['Wind direction (\u00b0)'] = weather_df[WIND_DIR]
     amicus_df['Cloud cover (%)'] = 0
     output_fn = f'{output_fn}_amicus_weather.csv'
-    amicus_df.to_csv(output_fn, index=False, date_format="%d/%m/%Y %H:%M", encoding='ANSI')
+    # amicus_df.to_csv(output_fn, index=False, date_format="%d/%m/%Y %H:%M", encoding='ANSI')
+    amicus_df.to_csv(output_fn, index=False, date_format="%d/%m/%Y %H:%M")
 
 
 def spread_direction(weather_df: DataFrame) -> DataFrame:
@@ -226,7 +227,8 @@ def post_process(ros_df):
 
 def save_csvs(ros_df_dict: Dict, output_fn):
     for model, df in ros_df_dict.items():
-        df.to_csv(f'{output_fn}_{model}.csv', index=False, encoding='ANSI')
+        # df.to_csv(f'{output_fn}_{model}.csv', index=False, encoding='ANSI')
+        df.to_csv(f'{output_fn}_{model}.csv', index=False)
 
 def create_path_gdf(ros_df: DataFrame, ignition_date: str, ignition_time: str, ignition_coords: List):
     """Create a GeoDataFrame of the spread path for plotting and shapefile creation."""
