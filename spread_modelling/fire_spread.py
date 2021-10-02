@@ -507,7 +507,8 @@ def run_models(
     selected_models: Dict,
     params_grass: Dict,
     params_mk5: Dict,
-    params_vesta: Dict
+    params_vesta: Dict,
+    params_vesta_fhr: Dict,
     ) -> Dict:
 
     """this is where sh*t gets real."""
@@ -609,7 +610,8 @@ if __name__ == "__main__":
         selected_models,
         params_grass,
         params_mk5,
-        params_vesta
+        params_vesta,
+        params_vesta_fhr
     )
 
     # Print tables of the models
