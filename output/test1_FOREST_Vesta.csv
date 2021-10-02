@@ -1,4 +1,4 @@
-DateTime,Direction (°),Moisture content %,Moisture function,flank ROS (km/h),FROS (km/h),FROS vector (m)
+DateTime,Direction (Â°),Moisture content %,Moisture function,flank ROS (km/h),FROS (km/h),FROS vector (m)
 2000-01-08 16:00:00,120,3.3,3.1,0.09,7.16,0
 2000-01-08 17:00:00,80,3.8,2.5,0.08,4.84,7160
 2000-01-08 18:00:00,78,3.8,2.5,0.08,4.95,4840
