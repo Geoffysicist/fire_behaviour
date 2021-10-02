@@ -7,6 +7,11 @@ agnostic to slope ATM. Use discretion when plotting.
 note Cruz et al. for large fires slope effect negligible
 """
 
+# TODO 
+# add flame hight and intensity
+# flank ROS from length to breadth ratio
+# output trimmed weather csv
+
 # from geopandas import geodataframe
 import pandas as pd
 import csv
@@ -115,6 +120,11 @@ def trim_weather(weather_df, start_date, start_time, duration):
     finish_datetime = start_datetime + dt.timedelta(hours=duration)
     
     return weather_df[(weather_df[DATETIME] >= start_datetime) & (weather_df[DATETIME] <= finish_datetime)]
+
+def weather_to_csv(weather_df: DataFrame, output_fn) -> None:
+    output_fn = f'{output_fn}_weather.csv'
+    # amicus_df.to_csv(output_fn, index=False, date_format="%d/%m/%Y %H:%M", encoding='ANSI')
+    weather_df.to_csv(output_fn, index=False, date_format="%d/%m/%Y %H:%M")
 
 def weather_to_amicus_csv(weather_df: DataFrame, output_fn) -> None:
     """Exports the weather dataframe as a csv file formatted for importing into Amicus."""
@@ -517,6 +527,7 @@ def run_models(
     start = dt.datetime.now()
     weather_df = get_weather(weather_fn, weather_header_row)
     weather_df = trim_weather(weather_df, start_date, start_time, duration)
+    
 
     MODELS = {
         # 'GRASS_Cheney_98': ros_grass_cheney(weather_df, grass_state, grass_curing),
@@ -623,6 +634,8 @@ if __name__ == "__main__":
         print('\n')
 
     save_csvs(model_outputs,path_output_fn)
+
+    weather_to_csv(weather_df, path_output_fn)
 
     # # do this after printing the models so dont get linestrings
     # model_gdfs = get_gdfs(model_outputs, ignition_date, ignition_time, ignition_coords)

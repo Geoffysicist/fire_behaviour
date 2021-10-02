@@ -1,4 +1,4 @@
-DateTime,Direction (°),FROS (km/h),flank ROS (km/h),FROS vector (m)
+DateTime,Direction (Â°),FROS (km/h),flank ROS (km/h),FROS vector (m)
 2000-01-08 16:00:00,120,13.09,0.7,0
 2000-01-08 17:00:00,80,10.53,0.66,13090
 2000-01-08 18:00:00,78,10.87,0.68,10530
