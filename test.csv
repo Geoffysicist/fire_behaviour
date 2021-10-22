@@ -1,4 +1,4 @@
-Date time,Air temperature (°C),Relative humidity (%),10 m wind speed (km/h),Wind direction (°),Cloud cover (%)
+Date time,Air temperature (ï¿½C),Relative humidity (%),10 m wind speed (km/h),Wind direction (ï¿½),Cloud cover (%)
 08/01/2000 16:00,38.2,9.9,55.0,300,0
 08/01/2000 17:00,36.4,10.8,45.7,260,0
 08/01/2000 18:00,37.2,10.9,46.5,258,0
@@ -16,4 +16,4 @@ Date time,Air temperature (°C),Relative humidity (%),10 m wind speed (km/h),Wind
 09/01/2000 06:00,14.4,51.0,21.1,246,0
 09/01/2000 07:00,14.3,55.0,27.7,240,0
 09/01/2000 08:00,15.8,52.0,24.1,220,0
-09/01/2000 09:00,17.7,42.0,22.3,230,0
+09/01/2000 09:00,17.7,42.0,22.3,230,1
