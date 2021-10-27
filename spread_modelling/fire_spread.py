@@ -14,15 +14,14 @@ note Cruz et al. for large fires slope effect negligible
 
 # from geopandas import geodataframe
 import pandas as pd
-import csv
 import datetime as dt
 import math as m
 import numpy as np
 from pandas.core.base import NoNewAttributesMixin
+
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 import matplotlib.pyplot as plt
-# from matplotlib.path import Path
 from typing import Dict, KeysView, List
 from geopandas import GeoDataFrame, points_from_xy
 from shapely.geometry import Point, LineString
